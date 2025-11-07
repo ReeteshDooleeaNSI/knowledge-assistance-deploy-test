@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --color-primary: #97d4c6;
+  --color-accent: #f5cc80;
+  --color-background: #ffffff;
+  --color-text-primary: #000000;
+  --color-link: #1d345e;
+  --radius-base: 12px;
+  --spacing-unit: 4px;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: "Montserrat", "Arial", "Helvetica", "メイリオ", "ヒラギノ角ゴ pro w3",
+    sans-serif;
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--color-text-primary);
+  background-color: var(--color-background);
+}
+
+h1,
+h2 {
+  font-family: "Montserrat", "Arial", "Helvetica", "メイリオ", "ヒラギノ角ゴ pro w3",
+    sans-serif;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+h1 {
+  font-size: 30px;
+}
+
+h2 {
+  font-size: 28px;
+}
+
+a {
+  color: var(--color-link);
+}
+
+a:hover {
+  color: #142546;
+}
+
+code {
+  font-family: "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Monaco,
+    Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
