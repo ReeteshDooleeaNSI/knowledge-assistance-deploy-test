@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import asyncio
 import os
-
-from agents import Agent
+from agents import Agent, RunContextWrapper, function_tool
 from agents.models.openai_responses import FileSearchTool
 from chatkit.agents import AgentContext
+from chatkit.types import ProgressUpdateEvent
+from dotenv import load_dotenv
+
+load_dotenv()
 
 KNOWLEDGE_VECTOR_STORE_ID = os.getenv("KNOWLEDGE_VECTOR_STORE_ID")
 
@@ -37,6 +41,7 @@ These files contain the definitive information about the September 2025 FOMC mee
 3. Never rely on external knowledge or unstated assumptions.
 
 Limit the entire response with citation to 2-3 sentences.
+Call the mendatory_tool before responding.
 
 """.strip()
 
@@ -51,10 +56,26 @@ def build_file_search_tool() -> FileSearchTool:
         max_num_results=5,
     )
 
+@function_tool  
+async def mendatory_tool(ctx: RunContextWrapper[AgentContext]) -> bool:
+    
+    """Call this tool before responding to the user.
+
+    Args:
+        none
+    """
+    await ctx.context.stream(
+        ProgressUpdateEvent(text="Loading a user profile...")
+    )
+    
+    await asyncio.sleep(1)
+    print("Mendatory tool called")
+    return True
+
 
 assistant_agent = Agent[AgentContext](
     model="gpt-4.1-mini",
     name="Federal Reserve Knowledge Assistant",
     instructions=KNOWLEDGE_ASSISTANT_INSTRUCTIONS,
-    tools=[build_file_search_tool()],
+    tools=[build_file_search_tool(), mendatory_tool],
 )

@@ -58,25 +58,25 @@ export default function Home({ scheme, onThemeChange }: HomeProps) {
 
   return (
     <div className={containerClass}>
-      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-8 px-6 py-8 lg:h-screen lg:max-h-screen lg:py-10">
+      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-8 px-4 py-8 lg:h-screen lg:max-h-screen lg:py-10">
         <header className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-3">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-link/70 dark:text-brand-primary/80">
-              Holson Desk AI Assistant
+              Federal Reserve Knowledge Assistant
             </p>
             <h1 className="font-heading text-[30px] font-semibold leading-tight text-brand-text dark:text-white sm:text-[32px]">
-              Explore your knowledge base and get help with your tickets.
+              Explore the September 2025 FOMC library
             </h1>
             <p className="max-w-3xl text-base text-brand-text/80 dark:text-[#d7e4f6]">
-              Ask questions about last open ticket and get help from your database to answer it.
+              Ask questions about the meeting, projections, and economic backdrop. The assistant searches the curated document set and cites every statement so you can inspect the original source.
             </p>
           </div>
           <ThemeToggle value={scheme} onChange={onThemeChange} />
         </header>
 
-        <div className="flex flex-1 flex-col gap-8">
-          <section className="flex flex-1 flex-col overflow-hidden rounded-3xl bg-white/80 shadow-[0_45px_90px_-45px_rgba(15,23,42,0.6)] ring-1 ring-slate-200/60 backdrop-blur dark:bg-slate-900/70 dark:shadow-[0_45px_90px_-45px_rgba(15,23,42,0.85)] dark:ring-slate-800/60">
-            <div className="flex flex-1" style={{ height: "800px" }}>
+        <div className="grid flex-1 grid-cols-1 gap-8 lg:h-[calc(100vh-260px)] lg:grid-cols-[3fr_2fr] lg:items-stretch">
+          <section className="flex flex-1 min-h-[50vh] flex-col overflow-hidden rounded-[12px] border border-brand-primary/30 bg-white shadow-[0_40px_70px_rgba(29,52,94,0.12)] backdrop-blur-sm dark:border-brand-primary/40 dark:bg-[#14243b] dark:shadow-[0_40px_90px_rgba(2,12,29,0.55)]">
+            <div className="flex flex-1">
               <ChatKitPanel
                 theme={scheme}
                 onThreadChange={handleThreadChange}
@@ -85,7 +85,7 @@ export default function Home({ scheme, onThemeChange }: HomeProps) {
             </div>
           </section>
 
-          <section className="flex flex-col overflow-hidden rounded-[12px]">
+          <section className="flex flex-1 flex-col overflow-hidden">
             <KnowledgeDocumentsPanel
               documents={documents}
               activeDocumentIds={activeDocumentIds}

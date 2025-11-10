@@ -67,7 +67,7 @@ export function ChatKitPanel({
   });
 
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-[12px] border border-brand-primary/30 bg-white shadow-[0_30px_70px_rgba(29,52,94,0.12)] dark:border-brand-primary/40 dark:bg-[#14243b]" style={{ height: "600px" }}>
+    <div className="relative h-full w-full overflow-hidden rounded-[12px] border border-brand-primary/30 bg-white shadow-[0_30px_70px_rgba(29,52,94,0.12)] dark:border-brand-primary/40 dark:bg-[#14243b]">
       <ChatKit
         control={chatkit.control}
         className="block h-full w-full text-[1.05rem] leading-relaxed font-sans"
