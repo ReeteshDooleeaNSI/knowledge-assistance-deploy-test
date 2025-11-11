@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import mimetypes
 import re
 from itertools import chain
@@ -8,7 +9,7 @@ from typing import Any, AsyncIterator, Iterable
 
 from agents import Agent, RunConfig, Runner
 from agents.model_settings import ModelSettings
-from chatkit.agents import AgentContext, stream_agent_response
+from chatkit.agents import AgentContext, simple_to_agent_input, stream_agent_response
 from chatkit.server import ChatKitServer, StreamingResult
 from chatkit.types import (
     Annotation,
@@ -27,7 +28,7 @@ from fastapi.responses import FileResponse, Response, StreamingResponse
 from openai.types.responses import ResponseInputContentParam
 from starlette.responses import JSONResponse
 
-from .assistant_agent import assistant_agent
+from .assistant_agent import assistant_agent, title_agent
 from .documents import (
     DOCUMENTS,
     DOCUMENTS_BY_FILENAME,
@@ -119,6 +120,24 @@ class KnowledgeAssistantServer(ChatKitServer[dict[str, Any]]):
         super().__init__(self.store)
         self.assistant = agent
 
+    async def maybe_update_thread_title(
+        self,
+        thread: ThreadMetadata,
+        input_item: UserMessageItem,
+        context: dict[str, Any],
+    ) -> None:
+        if thread.title is not None:
+            return
+        agent_input = await simple_to_agent_input(input_item)
+        agent_context = AgentContext(
+            thread=thread,
+            store=self.store,
+            request_context=context,
+        )
+        run = await Runner.run(title_agent, input=agent_input, context=agent_context)
+        thread.title = run.final_output
+        await self.store.save_thread(thread, context)
+
     async def respond(
         self,
         thread: ThreadMetadata,
@@ -134,6 +153,8 @@ class KnowledgeAssistantServer(ChatKitServer[dict[str, Any]]):
         if not isinstance(item, UserMessageItem):
             return
 
+        asyncio.create_task(self.maybe_update_thread_title(thread, item, context))
+
         message_text = _user_message_text(item)
         if not message_text:
             return
@@ -147,7 +168,7 @@ class KnowledgeAssistantServer(ChatKitServer[dict[str, Any]]):
             self.assistant,
             message_text,
             context=agent_context,
-            run_config=RunConfig(model_settings=ModelSettings(temperature=0.3)),
+            run_config=RunConfig(model_settings=ModelSettings(reasoning_effort="minimal")),
         )
 
         async for event in stream_agent_response(agent_context, result):

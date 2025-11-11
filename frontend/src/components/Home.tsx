@@ -37,7 +37,7 @@ export default function Home({ scheme, onThemeChange }: HomeProps) {
 
   const containerClass = clsx(
     "min-h-screen transition-colors duration-300",
-    isDark ? "bg-[#0d1b2a] text-white" : "bg-brand-background text-brand-text",
+    isDark ? "bg-[#fff9f6] text-white" : "bg-brand-background text-brand-text",
   );
 
   const handleDocumentSelect = useCallback((document: KnowledgeDocument) => {
@@ -74,7 +74,7 @@ export default function Home({ scheme, onThemeChange }: HomeProps) {
           <ThemeToggle value={scheme} onChange={onThemeChange} />
         </header>
 
-        <div className="grid flex-1 grid-cols-1 gap-8 lg:h-[calc(100vh-260px)] lg:grid-cols-[3fr_2fr] lg:items-stretch">
+        <div className="grid flex-1 grid-cols-1 gap-8 lg:h-[calc(100vh-260px)] lg:items-stretch">
           <section className="flex flex-1 min-h-[50vh] flex-col overflow-hidden rounded-[12px] border border-brand-primary/30 bg-white shadow-[0_40px_70px_rgba(29,52,94,0.12)] backdrop-blur-sm dark:border-brand-primary/40 dark:bg-[#14243b] dark:shadow-[0_40px_90px_rgba(2,12,29,0.55)]">
             <div className="flex flex-1">
               <ChatKitPanel
@@ -85,7 +85,7 @@ export default function Home({ scheme, onThemeChange }: HomeProps) {
             </div>
           </section>
 
-          <section className="flex flex-1 flex-col overflow-hidden">
+          {/* <section className="flex flex-1 flex-col overflow-hidden">
             <KnowledgeDocumentsPanel
               documents={documents}
               activeDocumentIds={activeDocumentIds}
@@ -96,7 +96,7 @@ export default function Home({ scheme, onThemeChange }: HomeProps) {
               citationsError={citationsError}
               onSelectDocument={handleDocumentSelect}
             />
-          </section>
+          </section> */}
         </div>
       </div>
 

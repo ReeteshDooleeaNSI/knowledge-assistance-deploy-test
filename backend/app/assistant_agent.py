@@ -56,26 +56,32 @@ def build_file_search_tool() -> FileSearchTool:
         max_num_results=5,
     )
 
-@function_tool  
-async def mendatory_tool(ctx: RunContextWrapper[AgentContext]) -> bool:
+# @function_tool  
+# async def mendatory_tool(ctx: RunContextWrapper[AgentContext]) -> bool:
     
-    """Call this tool before responding to the user.
+#     """Call this tool before responding to the user.
 
-    Args:
-        none
-    """
-    await ctx.context.stream(
-        ProgressUpdateEvent(text="Loading a user profile...")
-    )
+#     Args:
+#         none
+#     """
+#     await ctx.context.stream(
+#         ProgressUpdateEvent(text="Loading a user profile...")
+#     )
     
-    await asyncio.sleep(1)
-    print("Mendatory tool called")
-    return True
+#     await asyncio.sleep(1)
+#     print("Mendatory tool called")
+#     return True
 
 
 assistant_agent = Agent[AgentContext](
     model="gpt-4.1-mini",
     name="Federal Reserve Knowledge Assistant",
     instructions=KNOWLEDGE_ASSISTANT_INSTRUCTIONS,
-    tools=[build_file_search_tool(), mendatory_tool],
+    tools=[build_file_search_tool()], #mendatory_tool
+)
+
+title_agent = Agent[AgentContext](
+    model="gpt-4.1-mini",
+    name="Thread Title Generator",
+    instructions="Generate a concise, descriptive title (3-6 words) for the conversation thread based on the user's message. Return only the title text, nothing else.",
 )
