@@ -2,47 +2,31 @@ from __future__ import annotations
 
 import asyncio
 import os
+from typing import Any
+
 from agents import Agent, RunContextWrapper, function_tool
 from agents.models.openai_responses import FileSearchTool
 from chatkit.agents import AgentContext
 from chatkit.types import ProgressUpdateEvent
 from dotenv import load_dotenv
 
+from .zoho_auth import ZohoAuth
+from .zoho_client import ZohoDeskClient
+
 load_dotenv()
 
 KNOWLEDGE_VECTOR_STORE_ID = os.getenv("KNOWLEDGE_VECTOR_STORE_ID")
 
 KNOWLEDGE_ASSISTANT_INSTRUCTIONS = """
-You are a **Federal Reserve Knowledge Assistant agent**.
+Vous êtes un agent conversationnel qui aide les agents du support client d'Holson à répondre rapidement et précisément aux demandes concernant les tickets Zoho Desk.
 
-**Source library**
-You must use the following documents (refer to them by these exact filenames):
-- `01_fomc_statement_2025-09-17.html`
-- `02_implementation_note_2025-09-17.html`
-- `03_sep_tables_2025-09-17.pdf`
-- `04_sep_tables_2025-09-17.html`
-- `05_press_conference_transcript_2025-09-17.pdf`
-- `06_bls_cpi_2025-08.pdf`
-- `07_bea_gdp_q2_2025_second_estimate.pdf`
-- `08_fed_mpr_2025-06.pdf`
+Lorsque vous avez besoin d'informations détaillées sur le ticket le plus récent d'un client, utilisez l'outil suivant :
+- Outil : get_zoho_ticket(contact_name, email)
+- Utilisez-le uniquement si la demande de l’agent nécessite des informations sur un ticket, ou si vous n’avez pas déjà le détail du dernier ticket.
 
-These files contain the definitive information about the September 2025 FOMC meeting, projections, and related economic indicators.
+Votre objectif est de donner des réponses précises, synthétiques et faciles à utiliser pour traiter les demandes liées aux tickets et à l’historique client. Posez des questions de clarification à l’agent si nécessaire. Utilisez l’outil get_zoho_ticket chaque fois qu’il est utile d’obtenir ou de vérifier un ticket dans Zoho Desk.
 
-**Your task**
-- Always call the `file_search` tool before responding. Use the passages it returns as your evidence.
-- Compose a concise answer (2–4 sentences) grounded **only** in the retrieved passages.
-- Every factual sentence must include a citation in the format `(filename, page/section)` using the filenames listed above. If you cannot provide such a citation, say "I don't see that in the knowledge base." instead of guessing.
-- After the answer, optionally list key supporting bullets—each bullet needs its own citation.
-- Finish with a `Sources:` section listing each supporting document on its own line: `- filename (page/section)`. Use the exact filenames shown above so the client can highlight the source documents. Do not omit this section even if there is only one source.
-
-**Interaction guardrails**
-1. Ask for clarification when the question is ambiguous.
-2. Explain when the knowledge base does not contain the requested information.
-3. Never rely on external knowledge or unstated assumptions.
-
-Limit the entire response with citation to 2-3 sentences.
-Call the mendatory_tool before responding.
-
+Répondez en texte brut, sauf si l’agent demande un format spécifique.
 """.strip()
 
 
@@ -73,11 +57,76 @@ def build_file_search_tool() -> FileSearchTool:
 #     return True
 
 
+@function_tool
+async def get_zoho_ticket(
+    ctx: RunContextWrapper[AgentContext],
+    contact_name: str | None = None,
+    email: str | None = None,
+) -> dict[str, Any]:
+    """Get the latest ticket from Zoho Desk, optionally filtered by account name or email.
+
+    Args:
+        contact_name: Optional. Filter tickets by account name (company/client name).
+        email: Optional. Filter tickets by contact email address.
+        If neither is provided, returns the most recent ticket.
+    
+    Returns:
+        A dictionary containing ticket information including subject, status, contact details, conversations, etc.
+    """
+    try:
+        await ctx.context.stream(
+            ProgressUpdateEvent(text="Fetching ticket from Zoho Desk...")
+        )
+        
+        auth = ZohoAuth()
+        client = ZohoDeskClient(auth)
+        
+        ticket = await client.get_latest_ticket(contact_name=contact_name, email=email)
+        
+        if not ticket:
+            search_term = email or contact_name or ""
+            return {
+                "success": False,
+                "message": f"No ticket found{f' for: {search_term}' if search_term else ''}",
+            }
+        print("ticket_id: ", ticket.get("id"))
+        conversations = ticket.get("conversations", [])
+        print("conversations: ", conversations)
+        return {
+            "success": True,
+            "ticket": {
+                "id": ticket.get("id"),
+                "ticketNumber": ticket.get("ticketNumber"),
+                "subject": ticket.get("subject"),
+                "status": ticket.get("status"),
+                "priority": ticket.get("priority"),
+                "channel": ticket.get("channel"),
+                "createdTime": ticket.get("createdTime"),
+                "modifiedTime": ticket.get("modifiedTime"),
+                "conversations": conversations,
+                "contact": {
+                    "id": ticket.get("contactId"),
+                    "email": ticket.get("email"),
+                    "firstName": ticket.get("contact", {}).get("firstName") if isinstance(ticket.get("contact"), dict) else None,
+                    "lastName": ticket.get("contact", {}).get("lastName") if isinstance(ticket.get("contact"), dict) else None,
+                } if ticket.get("contactId") else None,
+                "description": ticket.get("description"),
+            },
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "Failed to fetch ticket from Zoho Desk",
+        }
+
+
 assistant_agent = Agent[AgentContext](
+   #model="gpt-5.1-chat-latest",
     model="gpt-4.1-mini",
     name="Federal Reserve Knowledge Assistant",
     instructions=KNOWLEDGE_ASSISTANT_INSTRUCTIONS,
-    tools=[build_file_search_tool()], #mendatory_tool
+    tools=[build_file_search_tool(), get_zoho_ticket], #mendatory_tool
 )
 
 title_agent = Agent[AgentContext](

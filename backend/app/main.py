@@ -164,15 +164,25 @@ class KnowledgeAssistantServer(ChatKitServer[dict[str, Any]]):
             store=self.store,
             request_context=context,
         )
+
+        previous_response_id = thread.metadata.get("previous_response_id")
         result = Runner.run_streamed(
             self.assistant,
             message_text,
             context=agent_context,
-            run_config=RunConfig(model_settings=ModelSettings(reasoning_effort="minimal")),
+            run_config=RunConfig(model_settings=ModelSettings()),
+            previous_response_id=previous_response_id,
         )
 
+        print(result)
+
         async for event in stream_agent_response(agent_context, result):
+            print("event: ", event)
             yield event
+
+        print("result.last_response_id: ", result.last_response_id) 
+        thread.metadata["previous_response_id"] = result.last_response_id
+        print("thread.metadata updated: ", thread.metadata)
 
     async def to_message_content(self, input: Attachment) -> ResponseInputContentParam:
         raise RuntimeError("File attachments are not supported in this demo.")

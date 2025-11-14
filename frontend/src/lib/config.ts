@@ -36,22 +36,22 @@ export const getKnowledgeThreadCitationsUrl = (threadId: string): string =>
 
 export const KNOWLEDGE_GREETING =
   import.meta.env.VITE_KNOWLEDGE_GREETING ??
-  "Welcome to the Holson Desk AI Assistant";
+  "Bienvenue dans l'assistant de support Holson Desk AI";
 
 export const KNOWLEDGE_STARTER_PROMPTS: StartScreenPrompt[] = [
   {
-    label: "What is the status of the last ticket?",
-    prompt: "Summarise the September 17, 2025 policy decision with citations.",
+    label: "Comment traiter un problème de pneumatique pour le GROUPE BEL?",
+    prompt: "Comment traiter un problème de pneumatique pour le GROUPE BEL en te basant sur les informations disponibles dans Zoho Learn.",
     icon: "sparkle",
   },
   {
-    label: "Information sur mon client BEL",
-    prompt: "What does the August 2025 CPI report highlight?",
+    label: "Combien de tickets le GROUPE BEL a en ce moment et quels sont leurs statuts ?",
+    prompt: "Combien de tickets le GROUPE BEL a en ce moment et quels sont leurs statuts en utilisant Zoho Desk ?",
     icon: "chart",
   },
   {
-    label: "Draft a response for the client last ticket",
-    prompt: "Compare the SEP growth and inflation projections.",
+    label: "Aide moi à répondre au dernier ticket du GROUP BEL",
+    prompt: "Aide moi à répondre au dernier ticket du GROUP BEL en te basant sur les informations disponibles dans Zoho Desk et dans la base de connaissances Carfleet",
     icon: "notebook",
   },
 ];
