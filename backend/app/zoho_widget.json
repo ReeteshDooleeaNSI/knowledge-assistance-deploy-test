@@ -1,0 +1,194 @@
+{
+    "type": "Card",
+    "size": "sm",
+    "children": [
+      {
+        "type": "Col",
+        "gap": 2,
+        "children": [
+          {
+            "type": "Row",
+            "children": [
+              {
+                "type": "Title",
+                "value": "Ticket #294132",
+                "size": "sm"
+              },
+              {
+                "type": "Spacer"
+              },
+              {
+                "type": "Badge",
+                "label": "Overdue 4 days",
+                "color": "danger"
+              }
+            ]
+          },
+          {
+            "type": "Text",
+            "value": "Sinistre - HB-065-SY - Sullyvan CHABAUTY - Bel",
+            "maxLines": 2
+          },
+          {
+            "type": "Row",
+            "gap": 2,
+            "children": [
+              {
+                "type": "Badge",
+                "label": "Nouveau",
+                "color": "info"
+              },
+              {
+                "type": "Badge",
+                "label": "Open"
+              },
+              {
+                "type": "Badge",
+                "label": "Email"
+              },
+              {
+                "type": "Badge",
+                "label": "HB-065-SY"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Divider",
+        "flush": true
+      },
+      {
+        "type": "Col",
+        "gap": 1,
+        "children": [
+          {
+            "type": "Row",
+            "children": [
+              {
+                "type": "Caption",
+                "value": "Last update • 2025-11-14 13:37 UTC"
+              }
+            ]
+          },
+          {
+            "type": "Text",
+            "value": "Réparation en cours, le garage attend encore des pièces",
+            "size": "sm",
+            "maxLines": 2
+          }
+        ]
+      },
+      {
+        "type": "Divider"
+      },
+      {
+        "type": "Col",
+        "gap": 2,
+        "children": [
+          {
+            "type": "Row",
+            "children": [
+              {
+                "type": "Caption",
+                "value": "Contact"
+              },
+              {
+                "type": "Spacer"
+              },
+              {
+                "type": "Text",
+                "value": "Catherine LARSONNIER • GROUPE BEL",
+                "size": "sm",
+                "maxLines": 1
+              }
+            ]
+          },
+          {
+            "type": "Row",
+            "children": [
+              {
+                "type": "Caption",
+                "value": "Due"
+              },
+              {
+                "type": "Spacer"
+              },
+              {
+                "type": "Text",
+                "value": "2025-11-11 12:40 UTC",
+                "size": "sm",
+                "color": "danger"
+              }
+            ]
+          },
+          {
+            "type": "Row",
+            "children": [
+              {
+                "type": "Caption",
+                "value": "Department"
+              },
+              {
+                "type": "Spacer"
+              },
+              {
+                "type": "Text",
+                "value": "Service Conducteurs",
+                "size": "sm",
+                "maxLines": 1
+              }
+            ]
+          },
+          {
+            "type": "Row",
+            "children": [
+              {
+                "type": "Caption",
+                "value": "Modified"
+              },
+              {
+                "type": "Spacer"
+              },
+              {
+                "type": "Text",
+                "value": "2025-11-14 13:37 UTC",
+                "size": "sm"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Divider"
+      },
+      {
+        "type": "Row",
+        "children": [
+          {
+            "type": "Button",
+            "label": "Open in Zoho Desk",
+            "style": "primary",
+            "onClickAction": {
+              "type": "ticket.open",
+              "payload": {
+                "id": "39265000108532705",
+                "url": "https://support.holson.fr/support/holson/ShowHomePage.do#Cases/dv/39265000108532705"
+              }
+            }
+          },
+          {
+            "type": "Button",
+            "label": "Add note",
+            "variant": "outline",
+            "onClickAction": {
+              "type": "ticket.add_note",
+              "payload": {
+                "id": "39265000108532705"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }

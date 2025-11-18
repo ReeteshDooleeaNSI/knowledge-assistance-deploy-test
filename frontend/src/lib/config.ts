@@ -50,8 +50,8 @@ export const KNOWLEDGE_STARTER_PROMPTS: StartScreenPrompt[] = [
     icon: "chart",
   },
   {
-    label: "Aide moi à répondre au dernier ticket du GROUP BEL",
-    prompt: "Aide moi à répondre au dernier ticket du GROUP BEL en te basant sur les informations disponibles dans Zoho Desk et dans la base de connaissances Carfleet",
+    label: "Aide moi à répondre au dernier ticket du GROUPE BEL",
+    prompt: "Aide moi à répondre au dernier ticket du GROUPE BEL en te basant sur les informations disponibles dans Zoho Desk et dans la base de connaissances Carfleet",
     icon: "notebook",
   },
 ];
@@ -59,3 +59,14 @@ export const KNOWLEDGE_STARTER_PROMPTS: StartScreenPrompt[] = [
 export const KNOWLEDGE_COMPOSER_PLACEHOLDER =
   import.meta.env.VITE_KNOWLEDGE_COMPOSER_PLACEHOLDER ??
   "Ask about the last ticket status";
+
+export const VECTOR_STORE_FILES_URL =
+  import.meta.env.VITE_VECTOR_STORE_FILES_URL ??
+  `${KNOWLEDGE_API_BASE}/vector-store/files`;
+
+export const VECTOR_STORE_FILES_BATCH_URL =
+  import.meta.env.VITE_VECTOR_STORE_FILES_BATCH_URL ??
+  `${KNOWLEDGE_API_BASE}/vector-store/files/batch`;
+
+export const VECTOR_STORE_FILE_DELETE_URL = (fileId: string): string =>
+  `${VECTOR_STORE_FILES_URL}/${fileId}`;

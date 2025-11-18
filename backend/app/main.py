@@ -22,7 +22,7 @@ from chatkit.types import (
     ThreadStreamEvent,
     UserMessageItem,
 )
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response, StreamingResponse
 from openai.types.responses import ResponseInputContentParam
@@ -39,6 +39,13 @@ from .documents import (
     as_dicts,
 )
 from .memory_store import MemoryStore
+from .vector_store_files import (
+    delete_file_from_vector_store,
+    extract_immatriculation_from_path,
+    list_vector_store_files,
+    upload_file_to_vector_store,
+    upload_files_batch,
+)
 
 
 def _normalise_filename(value: str) -> str:
@@ -174,10 +181,7 @@ class KnowledgeAssistantServer(ChatKitServer[dict[str, Any]]):
             previous_response_id=previous_response_id,
         )
 
-        print(result)
-
         async for event in stream_agent_response(agent_context, result):
-            print("event: ", event)
             yield event
 
         print("result.last_response_id: ", result.last_response_id) 
@@ -313,3 +317,115 @@ async def thread_citations(
 @app.get("/knowledge/health")
 async def health_check() -> dict[str, str]:
     return {"status": "healthy"}
+
+
+@app.get("/knowledge/vector-store/files")
+async def get_vector_store_files(
+    immatriculation: str | None = Query(None, description="Filter by immatriculation"),
+    client: str | None = Query(None, description="Filter by client"),
+) -> dict[str, Any]:
+    """List all files in the vector store, optionally filtered by metadata."""
+    try:
+        files = list_vector_store_files()
+        
+        if immatriculation or client:
+            filtered_files = []
+            for file in files:
+                file_immat = file.get("immatriculation")
+                file_client = file.get("client")
+                
+                immat_match = not immatriculation or file_immat == immatriculation
+                client_match = not client or file_client == client
+                
+                if immat_match and client_match:
+                    filtered_files.append(file)
+            files = filtered_files
+        
+        return {"files": files}
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post("/knowledge/vector-store/files")
+async def upload_vector_store_file(
+    file: UploadFile,
+    immatriculation: str | None = Form(None),
+    client: str | None = Form(None),
+) -> dict[str, Any]:
+    """Upload a single file to the vector store with optional metadata."""
+    try:
+        file_content = await file.read()
+        result = upload_file_to_vector_store(
+            file.filename or "unknown",
+            file_content,
+            immatriculation=immatriculation,
+            client=client,
+        )
+        return {"file": result}
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post("/knowledge/vector-store/files/batch")
+async def upload_vector_store_files_batch(
+    files: list[UploadFile] = File(...),
+    immatriculation: str | None = Form(None),
+    client: str | None = Form(None),
+    folder_name: str | None = Form(None),
+) -> dict[str, Any]:
+    """Upload multiple files to the vector store (for folder uploads) with optional metadata."""
+    try:
+        if len(files) > 100:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Too many files. Maximum is 100, received {len(files)}.",
+            )
+        
+        final_immatriculation = immatriculation
+        if not final_immatriculation and folder_name:
+            extracted = extract_immatriculation_from_path(folder_name)
+            if extracted:
+                final_immatriculation = extracted
+        
+        file_data = []
+        for file in files:
+            file_content = await file.read()
+            file_data.append((file.filename or "unknown", file_content))
+        
+        results = []
+        errors = []
+        for filename, content in file_data:
+            try:
+                clean_filename = Path(filename).name
+                result = upload_file_to_vector_store(
+                    clean_filename,
+                    content,
+                    immatriculation=final_immatriculation,
+                    client=client,
+                )
+                results.append(result)
+            except Exception as e:  # noqa: BLE001
+                error_msg = str(e)
+                print(f"Error uploading file {filename}: {error_msg}")
+                errors.append({"file": filename, "error": error_msg})
+        
+        return {
+            "files": results,
+            "errors": errors,
+            "success_count": len(results),
+            "error_count": len(errors),
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.delete("/knowledge/vector-store/files/{file_id}")
+async def delete_vector_store_file(file_id: str) -> dict[str, Any]:
+    """Delete a file from both the vector store and Files API."""
+    try:
+        result = delete_file_from_vector_store(file_id)
+        return result
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=str(exc)) from exc

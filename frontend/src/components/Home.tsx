@@ -58,17 +58,17 @@ export default function Home({ scheme, onThemeChange }: HomeProps) {
 
   return (
     <div className={containerClass}>
-      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-8 px-4 py-8 lg:h-screen lg:max-h-screen lg:py-10">
+      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-8 px-4 py-8 pt-24 lg:h-screen lg:max-h-screen lg:py-10">
         <header className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-3">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-link/70 dark:text-brand-primary/80">
-              Federal Reserve Knowledge Assistant
+              Holson Zoho Desk IA Assistant
             </p>
             <h1 className="font-heading text-[30px] font-semibold leading-tight text-brand-text dark:text-white sm:text-[32px]">
-              Explore the September 2025 FOMC library
+              Obtenez de l'assistance pour vos tickets Zoho Desk
             </h1>
             <p className="max-w-3xl text-base text-brand-text/80 dark:text-[#d7e4f6]">
-              Ask questions about the meeting, projections, and economic backdrop. The assistant searches the curated document set and cites every statement so you can inspect the original source.
+              Posez des questions sur vos tickets Zoho Desk et obtenez de l'assistance.
             </p>
           </div>
           <ThemeToggle value={scheme} onChange={onThemeChange} />
