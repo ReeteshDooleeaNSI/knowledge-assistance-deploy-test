@@ -27,7 +27,7 @@ _IMMATRICULATION_REGEX = re.compile(r"^[A-Z]{2}-[A-Z0-9]{3}-[A-Z0-9]{2}$")
 def extract_immatriculation_from_path(path: str) -> str | None:
     """Extract immatriculation from a path or filename.
     
-    Format expected: GH-XXX-XX (2 letters, 3 alphanumeric, 2 alphanumeric)
+    Format expected: XX-XXX-XX (2 letters, 3 alphanumeric, 2 alphanumeric)
     
     Args:
         path: Path string or filename
@@ -100,7 +100,7 @@ def upload_file_to_vector_store(
     Args:
         file_path: Path to the file or filename string
         file_content: Optional file content as bytes (if provided, file_path is used as filename)
-        immatriculation: Optional immatriculation metadata (e.g., "GH-XXX-XX")
+        immatriculation: Optional immatriculation metadata (e.g., "XX-XXX-XX")
         client: Optional client metadata (e.g., "GROUPE BEL", "HOMECARE")
     
     Returns:

@@ -49,7 +49,7 @@ async function getAllFilesFromDataTransfer(
     if (item.kind === "file") {
       const entry = item.webkitGetAsEntry();
       if (entry) {
-        await processEntry(entry);
+        await processEntry(entry as FileSystemEntry);
       } else {
         const file = item.getAsFile();
         if (file) {
@@ -152,8 +152,6 @@ export function FileUploadArea({
         ref={fileInputRef}
         type="file"
         multiple
-        webkitdirectory=""
-        directory=""
         onChange={handleFileInputChange}
         className="hidden"
         disabled={uploading}
@@ -183,13 +181,13 @@ export function FileUploadArea({
             </svg>
             <div className="space-y-2">
               <p className="text-base font-semibold text-brand-text dark:text-white">
-                Drop files or folders here
+                Déposez des fichiers ou des dossiers ici
               </p>
               <p className="text-sm text-brand-text/70 dark:text-brand-primary/70">
-                or click to browse
+                ou cliquez pour parcourir
               </p>
               <p className="text-xs text-brand-text/50 dark:text-brand-primary/50">
-                Supports all file types
+                Supports tous les types de fichiers
               </p>
             </div>
           </>

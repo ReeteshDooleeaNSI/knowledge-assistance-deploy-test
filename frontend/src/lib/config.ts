@@ -45,20 +45,20 @@ export const KNOWLEDGE_STARTER_PROMPTS: StartScreenPrompt[] = [
     icon: "sparkle",
   },
   {
-    label: "Combien de tickets le GROUPE BEL a en ce moment et quels sont leurs statuts ?",
-    prompt: "Combien de tickets le GROUPE BEL a en ce moment et quels sont leurs statuts en utilisant Zoho Desk ?",
+    label: "Donne moi les informations sur la voiture immatriculée GH-728-KS",
+    prompt: "Donne moi les informations sur la voiture immatriculée GH-728-KS",
     icon: "chart",
   },
   {
     label: "Aide moi à répondre au dernier ticket du GROUPE BEL",
-    prompt: "Aide moi à répondre au dernier ticket du GROUPE BEL en te basant sur les informations disponibles dans Zoho Desk et dans la base de connaissances Carfleet",
+    prompt: "Aide moi à répondre au dernier ticket du GROUPE BEL en te basant sur les informations disponibles dans Zoho Desk",
     icon: "notebook",
   },
 ];
 
 export const KNOWLEDGE_COMPOSER_PLACEHOLDER =
   import.meta.env.VITE_KNOWLEDGE_COMPOSER_PLACEHOLDER ??
-  "Ask about the last ticket status";
+  "Demande des informations sur des tickets Zoho Desk ou sur la base de connaissances Carfleet";
 
 export const VECTOR_STORE_FILES_URL =
   import.meta.env.VITE_VECTOR_STORE_FILES_URL ??

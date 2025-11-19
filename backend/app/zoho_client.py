@@ -100,7 +100,7 @@ class ZohoDeskClient:
                 limit=1,
                 org_id=org_id,
             )
-        
+        print("response: ", response)
         return response
 
     async def get_ticket(self, ticket_id: str, org_id: str | None = None) -> dict[str, Any]:

@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import re
 from datetime import datetime, timezone
 from typing import Any
 
-from agents import Agent, RunContextWrapper, function_tool
+from agents import Agent, RunContextWrapper, Runner, function_tool
 from agents.models.openai_responses import FileSearchTool
 from chatkit.agents import AgentContext
 from chatkit.types import ProgressUpdateEvent
@@ -33,25 +34,49 @@ load_dotenv()
 KNOWLEDGE_VECTOR_STORE_ID = os.getenv("KNOWLEDGE_VECTOR_STORE_ID")
 
 KNOWLEDGE_ASSISTANT_INSTRUCTIONS = """
-Vous êtes un agent conversationnel qui aide les agents du support client d'Holson à répondre rapidement et précisément aux demandes concernant les tickets Zoho Desk.
+Rôle : Agent conversationnel spécialisé pour assister les agents du support client Holson dans la gestion rapide et précise des demandes liées aux tickets Zoho Desk.
 
-Lorsque vous avez besoin d'informations détaillées sur le ticket le plus récent d'un client, utilisez l'outil suivant :
-- Outil : get_zoho_ticket(contact_name, email)
-- Utilisez-le uniquement si la demande de l'agent nécessite des informations sur un ticket, ou si vous n'avez pas déjà le détail du dernier ticket.
+Instructions principales :
+- Fournissez des réponses précises, synthétiques et faciles à utiliser pour traiter les demandes relatives aux tickets et à l’historique client.
+- Posez des questions de clarification à l'agent si nécessaire pour garantir la complétude des informations.
+
+Outils disponibles :
+
+1. Outil : get_zoho_ticket(contact_name, email)
+   - Utilisez cet outil uniquement lorsque la demande nécessite des informations détaillées sur un ticket.
+   - Employez-le chaque fois qu’il est utile pour obtenir ou vérifier un ticket dans Zoho Desk.
+
+2. Documentation procédurale (ex : pneumatique)
+   - Recherchez les informations dans les fichiers Zoho Learn suivants uniquement lorsque la demande concerne une procédure où l’immatriculation n’est pas requise :
+     - entités-et-agences.html
+     - commandes-et-livraisons.html
+     - organisation.html
+     - maintenances-et-services.html
+     - administratif.html
+     - aen-et-facturation.html
+     - suivi-des-tâches.html
 
 WORKFLOW DE RECHERCHE DE DOCUMENTS (file_search) :
-1. TOUJOURS identifier l'immatriculation dans le ticket Zoho (format: GH-XXX-XX ou similaire)
-   - L'immatriculation peut être mentionnée dans le sujet, la description, ou les conversations du ticket
-   - Si l'immatriculation n'est pas trouvée, demandez à l'agent de la fournir
-2. TOUJOURS filtrer les recherches sur "immat" (immatriculation) avant d'utiliser file_search
-   - Les documents sont organisés par immatriculation dans le vector store
-   - Filtrer par immatriculation garantit que vous ne récupérez que les documents pertinents pour ce véhicule/client
-3. Utiliser file_search uniquement après avoir identifié l'immatriculation
-   - Cela permet de trouver rapidement les documents liés au véhicule concerné
+1. Identifiez TOUJOURS l’immatriculation du véhicule (format : XX-XXX-XX ou similaire).
+   - L’immatriculation peut être mentionnée dans le sujet, la description ou les conversations du ticket.
+   - Si elle n’est pas trouvée, demandez-la à l’utilisateur.
+2. Filtrez TOUJOURS les recherches sur « immat » (immatriculation) avant d’utiliser file_search.
+   - Les documents sont organisés par immatriculation et nom client dans le vector store.
+   - Ce filtrage garantit l’accès uniquement aux documents pertinents pour ce véhicule/client.
+3. Utilisez file_search UNIQUEMENT APRÈS avoir identifié l’immatriculation.
+   - Cela permet de cibler rapidement les documents liés au véhicule concerné.
+   - Exception : Lorsque la demande concerne une procédure où l’immatriculation n’est pas requise (voir liste de fichiers ci-dessus).
 
-Votre objectif est de donner des réponses précises, synthétiques et faciles à utiliser pour traiter les demandes liées aux tickets et à l'historique client. Posez des questions de clarification à l'agent si nécessaire. Utilisez l'outil get_zoho_ticket chaque fois qu'il est utile d'obtenir ou de vérifier un ticket dans Zoho Desk.
+Format de réponse : Répondez toujours en texte brut, sauf demande expresse de l’agent pour un autre format.
 
-Répondez en texte brut, sauf si l'agent demande un format spécifique.
+Output Verbosity :
+- Limitez votre réponse à 2 courts paragraphes maximum, ou si la réponse doit être listée, utilisez 6 points ou moins, une ligne chacun.
+- Privilégiez des réponses complètes et exploitables sans dépasser cette limite de longueur.
+
+Philosophie :
+- Privilégiez la clarté, la rapidité et le respect tout en respectant la limite de longueur ci-dessus.
+- Ne rallongez pas la réponse uniquement pour marquer la politesse.
+- Préférez la complétude des informations à un retour trop prématuré, même si la demande de l'utilisateur est brève, tant que cela reste dans la limite fixée.
 """.strip()
 
 
@@ -130,10 +155,15 @@ def _strip_html(html_content: str) -> str:
     return text.strip()
 
 
-def extract_conversation_snippet(conversations: list[dict[str, Any]]) -> tuple[str, str]:
-    """Extract last update time and snippet from most recent conversation."""
+async def extract_conversation_snippet(
+    ticket: dict[str, Any]
+) -> tuple[str, str]:
+    """Extract last update time and snippet from ticket data."""
+    conversations = ticket.get("conversations", [])
+    
     if not conversations:
-        return "N/A", "No updates"
+        last_update_time = format_datetime(ticket.get("modifiedTime"))
+        return last_update_time, "No updates"
     
     most_recent = max(
         conversations,
@@ -145,15 +175,24 @@ def extract_conversation_snippet(conversations: list[dict[str, Any]]) -> tuple[s
         most_recent.get("modifiedTime") or most_recent.get("createdTime")
     )
     
-    content = most_recent.get("content", "")
-    if isinstance(content, str):
-        plain_text = _strip_html(content)
-        snippet = plain_text[:100].strip()
+    try:
+        ticket_json = json.dumps(ticket, ensure_ascii=False, indent=2)
+        print(ticket_json)
+        input_text = f"Extract a concise summary (max 100 characters) from this ticket data:\n\n{ticket_json}"
+        run = await Runner.run(snippet_agent, input=input_text)
+        snippet = run.final_output.strip() if run.final_output else "No content"
+        if len(snippet) > 100:
+            snippet = snippet[:100].strip() + "..."
+    except Exception as e:
+        print(f"Failed to generate snippet with LLM: {e}")
+        content = most_recent.get("content", "")
+        if isinstance(content, str):
+            plain_text = _strip_html(content)
+        else:
+            plain_text = _strip_html(str(content) if content else "")
+        snippet = plain_text[:100].strip() if plain_text else "No content"
         if len(plain_text) > 100:
             snippet += "..."
-    else:
-        plain_text = _strip_html(str(content) if content else "")
-        snippet = plain_text[:100].strip() if plain_text else "No content"
     
     return last_update_time, snippet
 
@@ -169,7 +208,9 @@ def _extract_string_value(value: Any, default: str = "N/A") -> str:
     return str(value) if value else default
 
 
-def extract_ticket_data(ticket: dict[str, Any]) -> dict[str, Any]:
+async def extract_ticket_data(
+    ticket: dict[str, Any]
+) -> dict[str, Any]:
     """Extract and format all ticket data needed for the widget."""
     ticket_id = str(ticket.get("id", ""))
     ticket_number = str(ticket.get("ticketNumber", "N/A"))
@@ -205,8 +246,9 @@ def extract_ticket_data(ticket: dict[str, Any]) -> dict[str, Any]:
     
     modified_time = format_datetime(ticket.get("modifiedTime"))
     
-    conversations = ticket.get("conversations", [])
-    last_update_time, last_update_snippet = extract_conversation_snippet(conversations)
+    last_update_time, last_update_snippet = await extract_conversation_snippet(
+        ticket
+    )
     
     web_url = f"https://support.holson.fr/support/holson/ShowHomePage.do#Cases/dv/{ticket_id}"
     
@@ -246,12 +288,12 @@ def build_ticket_widget(ticket_data: dict[str, Any]) -> WidgetRoot:
                             Spacer(),
                             (
                                 Badge(
-                                    label=f"Overdue {ticket_data['overdueBy']}",
+                                    label=f"En retard de {ticket_data['overdueBy']}",
                                     color="danger",
                                 )
                                 if ticket_data["overdue"] and ticket_data["overdueBy"]
                                 else Badge(
-                                    label="On time",
+                                    label="À temps",
                                     color="success",
                                 )
                             ),
@@ -275,7 +317,7 @@ def build_ticket_widget(ticket_data: dict[str, Any]) -> WidgetRoot:
                 children=[
                     Row(
                         children=[
-                            Caption(value=f"Last update • {ticket_data['lastUpdateTime']}"),
+                            Caption(value=f"Dernière mise à jour • {ticket_data['lastUpdateTime']}"),
                         ]
                     ),
                     Text(value=ticket_data["lastUpdateSnippet"], size="sm", maxLines=2),
@@ -298,7 +340,7 @@ def build_ticket_widget(ticket_data: dict[str, Any]) -> WidgetRoot:
                     ),
                     Row(
                         children=[
-                            Caption(value="Due"),
+                            Caption(value="Dû"),
                             Spacer(),
                             Text(
                                 value=ticket_data["dueDate"],
@@ -309,14 +351,14 @@ def build_ticket_widget(ticket_data: dict[str, Any]) -> WidgetRoot:
                     ),
                     Row(
                         children=[
-                            Caption(value="Department"),
+                            Caption(value="Département"),
                             Spacer(),
                             Text(value=ticket_data["departmentName"], size="sm", maxLines=1),
                         ]
                     ),
                     Row(
                         children=[
-                            Caption(value="Modified"),
+                            Caption(value="Modifié"),
                             Spacer(),
                             Text(value=ticket_data["modifiedTime"], size="sm"),
                         ]
@@ -327,19 +369,21 @@ def build_ticket_widget(ticket_data: dict[str, Any]) -> WidgetRoot:
             Row(
                 children=[
                     Button(
-                        label="Open in Zoho Desk",
+                        label="Ouvrir dans Zoho Desk",
                         style="primary",
                         onClickAction={
                             "type": "ticket.open",
                             "payload": {"id": ticket_data["ticketId"], "url": ticket_data["webUrl"]},
+                            "handler": "server",
                         },
                     ),
                     Button(
-                        label="Add note",
+                        label="Ajouter une note",
                         variant="outline",
                         onClickAction={
                             "type": "ticket.add_note",
                             "payload": {"id": ticket_data["ticketId"]},
+                            "handler": "server",
                         },
                     ),
                 ]
@@ -409,7 +453,7 @@ async def get_zoho_ticket(
             except Exception as e:
                 print(f"Failed to fetch conversations: {e}")
         
-        ticket_data = extract_ticket_data(ticket)
+        ticket_data = await extract_ticket_data(ticket)
         
         try:
             widget = build_ticket_widget(ticket_data)
@@ -465,9 +509,9 @@ async def get_zoho_ticket(
 
 
 assistant_agent = Agent[AgentContext](
-   #model="gpt-5.1-chat-latest",
-    model="gpt-4.1-mini",
-    name="Federal Reserve Knowledge Assistant",
+    model="gpt-5.1-chat-latest",
+    #model="gpt-4.1-mini",
+    name="Holson Zoho Desk Assistant",
     instructions=KNOWLEDGE_ASSISTANT_INSTRUCTIONS,
     tools=[build_file_search_tool(), get_zoho_ticket], #mendatory_tool
 )
@@ -476,4 +520,10 @@ title_agent = Agent[AgentContext](
     model="gpt-4.1-mini",
     name="Thread Title Generator",
     instructions="Generate a concise, descriptive title (3-6 words) for the conversation thread based on the user's message. Return only the title text, nothing else.",
+)
+
+snippet_agent = Agent[AgentContext](
+    model="gpt-4.1-mini",
+    name="Conversation Snippet Generator",
+    instructions="Extract a concise, informative snippet (maximum 100 characters) from the ticket content. Focus on the key information or main point. Return only the snippet text, nothing else.",
 )

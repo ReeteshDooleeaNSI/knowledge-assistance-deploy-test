@@ -5,13 +5,14 @@ import mimetypes
 import re
 from itertools import chain
 from pathlib import Path
-from typing import Any, AsyncIterator, Iterable
+from typing import Any, AsyncIterator, Iterable, Optional
 
 from agents import Agent, RunConfig, Runner
 from agents.model_settings import ModelSettings
 from chatkit.agents import AgentContext, simple_to_agent_input, stream_agent_response
 from chatkit.server import ChatKitServer, StreamingResult
 from chatkit.types import (
+    Action,
     Annotation,
     AssistantMessageContent,
     AssistantMessageItem,
@@ -21,6 +22,7 @@ from chatkit.types import (
     ThreadMetadata,
     ThreadStreamEvent,
     UserMessageItem,
+    WidgetItem,
 )
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -121,6 +123,12 @@ def _is_tool_completion_item(item: Any) -> bool:
     return isinstance(item, ClientToolCallItem)
 
 
+async def _empty_async_iterator() -> AsyncIterator[ThreadStreamEvent]:
+    """Return an empty async iterator."""
+    if False:  # pragma: no cover
+        yield  # Makes this an async generator
+
+
 class KnowledgeAssistantServer(ChatKitServer[dict[str, Any]]):
     def __init__(self, agent: Agent[AgentContext]) -> None:
         self.store = MemoryStore()
@@ -190,6 +198,39 @@ class KnowledgeAssistantServer(ChatKitServer[dict[str, Any]]):
 
     async def to_message_content(self, input: Attachment) -> ResponseInputContentParam:
         raise RuntimeError("File attachments are not supported in this demo.")
+
+    async def action(
+        self,
+        thread: ThreadMetadata,
+        action: Action[str, Any],
+        sender: Optional[WidgetItem],
+        context: dict[str, Any],
+    ) -> AsyncIterator[ThreadStreamEvent]:
+        """Handle widget actions."""
+        action_type = action.type
+        payload = action.payload if hasattr(action, "payload") else {}
+        
+        print(f"[Action] Received action: {action_type}, payload: {payload}")
+        
+        if action_type == "ticket.open":
+            url = payload.get("url") if isinstance(payload, dict) else None
+            print(f"[Action] Opening URL: {url}")
+            # For client-side actions, we just return empty iterator
+            # The frontend will handle opening the URL
+            async for event in _empty_async_iterator():
+                yield event
+            return
+        
+        if action_type == "ticket.add_note":
+            # For now, just acknowledge the action
+            # Future: could implement actual note addition via Zoho API
+            async for event in _empty_async_iterator():
+                yield event
+            return
+        
+        # Unknown action type - return empty iterator
+        async for event in _empty_async_iterator():
+            yield event
 
     async def latest_citations(
         self, thread_id: str, context: dict[str, Any]

@@ -4,9 +4,9 @@
         <Title value={`Ticket #${ticketNumber}`} size="sm" />
         <Spacer />
         {overdue ? (
-          <Badge label={`Overdue ${overdueBy}`} color="danger" />
+          <Badge label={`En retard ${overdueBy}`} color="danger" />
         ) : (
-          <Badge label="On time" color="success" />
+          <Badge label="À temps" color="success" />
         )}
       </Row>
   
@@ -24,7 +24,7 @@
   
     <Col gap={1}>
       <Row>
-        <Caption value={`Last update • ${lastUpdateTime}`} />
+        <Caption value={`Dernière mise à jour • ${lastUpdateTime}`} />
       </Row>
       <Text value={lastUpdateSnippet} size="sm" maxLines={2} />
     </Col>
@@ -38,7 +38,7 @@
         <Text value={`${contactName} • ${accountName}`} size="sm" maxLines={1} />
       </Row>
       <Row>
-        <Caption value="Due" />
+        <Caption value="Dû" />
         <Spacer />
         <Text
           value={dueDate}
@@ -47,12 +47,12 @@
         />
       </Row>
       <Row>
-        <Caption value="Department" />
+        <Caption value="Département" />
         <Spacer />
         <Text value={departmentName} size="sm" maxLines={1} />
       </Row>
       <Row>
-        <Caption value="Modified" />
+        <Caption value="Modifié" />
         <Spacer />
         <Text value={modifiedTime} size="sm" />
       </Row>
@@ -62,7 +62,7 @@
   
     <Row>
       <Button
-        label="Open in Zoho Desk"
+        label="Ouvrir dans Zoho Desk"
         style="primary"
         onClickAction={{
           type: "ticket.open",
@@ -70,7 +70,7 @@
         }}
       />
       <Button
-        label="Add note"
+        label="Ajouter une note"
         variant="outline"
         onClickAction={{ type: "ticket.add_note", payload: { id: ticketId } }}
       />

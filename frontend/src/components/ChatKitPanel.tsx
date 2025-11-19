@@ -1,4 +1,5 @@
 import { ChatKit, useChatKit } from "@openai/chatkit-react";
+import { useEffect } from "react";
 import type { ColorScheme } from "../hooks/useColorScheme";
 import {
   KNOWLEDGE_CHATKIT_API_DOMAIN_KEY,
@@ -7,6 +8,13 @@ import {
   KNOWLEDGE_GREETING,
   KNOWLEDGE_STARTER_PROMPTS,
 } from "../lib/config";
+
+// Global function for ChatKit to call when ticket.open action is triggered
+declare global {
+  interface Window {
+    handleZohoTicketOpen?: (url: string) => void;
+  }
+}
 
 type ChatKitPanelProps = {
   theme: ColorScheme;
@@ -65,6 +73,101 @@ export function ChatKitPanel({
       console.error("ChatKit error", error);
     },
   });
+
+  useEffect(() => {
+    const handleClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      const button = target.closest("button");
+      
+      if (button && button.textContent?.trim() === "Open in Zoho Desk") {
+        // Try to find the widget and extract URL
+        let element: HTMLElement | null = button;
+        while (element) {
+          // Look for widget container
+          const widgetKey = element.getAttribute("data-widget-key");
+          if (widgetKey === "zoho_ticket") {
+            // Search for URL in the widget's HTML content
+            const widgetHTML = element.innerHTML;
+            const urlMatch = widgetHTML.match(/"url"\s*:\s*"([^"]+)"/);
+            if (urlMatch && urlMatch[1]) {
+              event.preventDefault();
+              event.stopPropagation();
+              event.stopImmediatePropagation();
+              window.open(urlMatch[1], "_blank");
+              return false;
+            }
+          }
+          
+          // Also check if the button has action data stored
+          const actionData = (button as any).__actionData;
+          if (actionData?.payload?.url) {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            window.open(actionData.payload.url, "_blank");
+            return false;
+          }
+          
+          element = element.parentElement;
+        }
+      }
+    };
+
+    // Also intercept fetch to catch the URL from the request
+    const originalFetch = window.fetch;
+    window.fetch = async (...args) => {
+      const [url, options] = args;
+      
+      if (
+        typeof url === "string" &&
+        url.includes("/knowledge/chatkit") &&
+        options?.method === "POST"
+      ) {
+        // Try to extract URL from the request
+        try {
+          if (options.body) {
+            let bodyText: string;
+            if (typeof options.body === "string") {
+              bodyText = options.body;
+            } else {
+              // Clone the body to read it
+              const clonedBody = options.body instanceof ReadableStream
+                ? options.body
+                : new Blob([options.body as BlobPart]).stream();
+              bodyText = await new Response(clonedBody).text();
+            }
+            
+            if (bodyText.includes('"type":"ticket.open"') || bodyText.includes('"type": "ticket.open"')) {
+              const urlMatch = bodyText.match(/"url"\s*:\s*"([^"]+)"/);
+              if (urlMatch && urlMatch[1]) {
+                // Open URL in background
+                setTimeout(() => window.open(urlMatch[1], "_blank"), 0);
+              }
+            }
+          }
+        } catch (e) {
+          // Ignore errors
+        }
+      }
+      
+      return originalFetch(...args);
+    };
+
+    const chatkitElement = document.querySelector("openai-chatkit");
+    if (chatkitElement) {
+      // Use capture phase to intercept before ChatKit
+      chatkitElement.addEventListener("click", handleClick, true);
+      
+      return () => {
+        chatkitElement.removeEventListener("click", handleClick, true);
+        window.fetch = originalFetch;
+      };
+    }
+    
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, []);
 
   return (
     <div className="relative h-full w-full overflow-hidden rounded-[12px] border border-brand-primary/30 bg-white shadow-[0_30px_70px_rgba(29,52,94,0.12)] dark:border-brand-primary/40 dark:bg-[#14243b]">
