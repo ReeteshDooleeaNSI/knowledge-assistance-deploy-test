@@ -519,11 +519,11 @@ assistant_agent = Agent[AgentContext](
 title_agent = Agent[AgentContext](
     model="gpt-4.1-mini",
     name="Thread Title Generator",
-    instructions="Generate a concise, descriptive title (3-6 words) for the conversation thread based on the user's message. Return only the title text, nothing else.",
+    instructions="Generate a concise title (3-6 words) for the conversation thread based on the user's message. The title should be a single sentence that captures the main point or intention of the conversation. Return only the title text, nothing else.",
 )
 
 snippet_agent = Agent[AgentContext](
     model="gpt-4.1-mini",
     name="Conversation Snippet Generator",
-    instructions="Extract a concise, informative snippet (maximum 100 characters) from the ticket content. Focus on the key information or main point. Return only the snippet text, nothing else.",
+    instructions="Extract a concise, informative snippet (maximum 100 characters) from the ticket content. Focus on the key information or main point of the threads of the conversation. Return only the snippet text in french, nothing else.",
 )

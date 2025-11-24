@@ -4,7 +4,6 @@ import clsx from "clsx";
 import { ChatKitPanel } from "./ChatKitPanel";
 import { DocumentPreviewModal } from "./DocumentPreviewModal";
 import { KnowledgeDocumentsPanel } from "./KnowledgeDocumentsPanel";
-import { ThemeToggle } from "./ThemeToggle";
 import type { KnowledgeDocument } from "../hooks/useKnowledgeDocuments";
 import { useKnowledgeDocuments } from "../hooks/useKnowledgeDocuments";
 import { useThreadCitations } from "../hooks/useThreadCitations";
@@ -12,10 +11,9 @@ import type { ColorScheme } from "../hooks/useColorScheme";
 
 type HomeProps = {
   scheme: ColorScheme;
-  onThemeChange: (scheme: ColorScheme) => void;
 };
 
-export default function Home({ scheme, onThemeChange }: HomeProps) {
+export default function Home({ scheme }: HomeProps) {
   const [selectedDocument, setSelectedDocument] = useState<KnowledgeDocument | null>(null);
   const [threadId, setThreadId] = useState<string | null>(null);
 
@@ -59,7 +57,7 @@ export default function Home({ scheme, onThemeChange }: HomeProps) {
   return (
     <div className={containerClass}>
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-8 px-4 py-8 pt-28 lg:h-screen lg:max-h-screen lg:py-10 lg:pt-16">
-        <header className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+        <header className="flex flex-col gap-6">
           <div className="space-y-3">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-link/70 dark:text-brand-primary/80">
               Holson Zoho Desk IA Assistant
@@ -71,7 +69,6 @@ export default function Home({ scheme, onThemeChange }: HomeProps) {
               Posez des questions sur vos tickets Zoho Desk et obtenez de l'assistance.
             </p>
           </div>
-          <ThemeToggle value={scheme} onChange={onThemeChange} />
         </header>
 
         <div className="grid flex-1 grid-cols-1 gap-8 lg:h-[calc(100vh-260px)] lg:items-stretch">
