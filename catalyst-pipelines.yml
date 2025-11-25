@@ -9,15 +9,17 @@ images:
       username: << env.NPM_REGISTRY_USERNAME >>
       password: << env.NPM_REGISTRY_PASSWORD >>
 jobs:
-  BuildAndDeploy:
+  BuildFrontend:
     runner: Compute
     image: NodeImage
     steps:
       - npm install -g zcatalyst-cli
+      - cd frontend
       - rm -rf node_modules package-lock.json
       - npm install
       - npm run build
-      - cp client-package.json dist/
+      - mv dist ..
+      - cp client-package.json ../dist/
       - >-
         catalyst deploy --project << env.PROJECT_NAME
         >> --org << env.CATALYST_ORG >> --token << env.CATALYST_TOKEN >>
@@ -26,4 +28,4 @@ stages:
   - name: ReactDeployment
     image: NodeImage
     jobs:
-      - BuildAndDeploy
+      - BuildFrontend
