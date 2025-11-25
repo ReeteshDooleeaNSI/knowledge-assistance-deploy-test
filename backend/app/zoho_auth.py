@@ -33,11 +33,16 @@ class ZohoAuth:
             raise ValueError(
                 "ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, and ZOHO_REFRESH_TOKEN must be set"
             )
+        
+        # Debug logging
+        masked_token = f"{self.refresh_token[:5]}...{self.refresh_token[-5:]}" if self.refresh_token else "None"
+        print(f"[ZohoAuth] Initialized with Refresh Token: {masked_token}")
 
     async def get_access_token(self) -> str:
         if self._access_token:
             return self._access_token
 
+        print("[ZohoAuth] Requesting new access token...")
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{ZOHO_ACCOUNTS_URL}/oauth/v2/token",
@@ -48,9 +53,14 @@ class ZohoAuth:
                     "grant_type": "refresh_token",
                 },
             )
+            
+            if response.status_code != 200:
+                print(f"[ZohoAuth] Token generation failed: {response.text}")
+            
             response.raise_for_status()
             data: dict[str, Any] = response.json()
             self._access_token = data["access_token"]
+            print("[ZohoAuth] Access token obtained successfully")
             return self._access_token
 
     def get_headers(self, org_id: str | None = None) -> dict[str, str]:

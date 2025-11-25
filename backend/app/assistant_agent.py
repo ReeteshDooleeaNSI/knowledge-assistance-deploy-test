@@ -23,6 +23,8 @@ from chatkit.widgets import (
     Text,
     Title,
     WidgetRoot,
+    Form,
+    Input,
 )
 from dotenv import load_dotenv
 
@@ -39,6 +41,7 @@ Rôle : Agent conversationnel spécialisé pour assister les agents du support c
 Instructions principales :
 - Fournissez des réponses précises, synthétiques et faciles à utiliser pour traiter les demandes relatives aux tickets et à l’historique client.
 - Posez des questions de clarification à l'agent si nécessaire pour garantir la complétude des informations.
+- Écris un draft dans Zoho Desk que si on te le demande explicitement.
 
 Outils disponibles :
 
@@ -77,6 +80,7 @@ Philosophie :
 - Privilégiez la clarté, la rapidité et le respect tout en respectant la limite de longueur ci-dessus.
 - Ne rallongez pas la réponse uniquement pour marquer la politesse.
 - Préférez la complétude des informations à un retour trop prématuré, même si la demande de l'utilisateur est brève, tant que cela reste dans la limite fixée.
+- Si un outil retourne un Widget (comme un formulaire), retournez-le tel quel.
 """.strip()
 
 
@@ -224,12 +228,14 @@ async def extract_ticket_data(
         ticket.get("product") or ticket.get("productName"), "N/A"
     )
     
-    contact = ticket.get("contact", {})
+    contact = ticket.get("contact") or {}
     if isinstance(contact, dict):
         first_name = contact.get("firstName", "")
         last_name = contact.get("lastName", "")
         contact_name = f"{first_name} {last_name}".strip() or "Unknown"
-        account_name = contact.get("accountName", contact.get("account", {}).get("accountName", "N/A"))
+        
+        account = contact.get("account") or {}
+        account_name = contact.get("accountName") or account.get("accountName", "N/A")
     else:
         contact_name = "Unknown"
         account_name = "N/A"
@@ -381,9 +387,11 @@ def build_ticket_widget(ticket_data: dict[str, Any]) -> WidgetRoot:
                         label="Ajouter une note",
                         variant="outline",
                         onClickAction={
-                            "type": "ticket.add_note",
-                            "payload": {"id": ticket_data["ticketId"]},
-                            "handler": "server",
+                            "type": "tool",
+                            "payload": {
+                                "tool": "open_add_note_form",
+                                "args": {"ticket_id": ticket_data["ticketId"]},
+                            },
                         },
                     ),
                 ]
@@ -413,12 +421,14 @@ async def get_zoho_ticket(
     ctx: RunContextWrapper[AgentContext],
     contact_name: str | None = None,
     email: str | None = None,
+    ticket_number: str | None = None,
 ) -> dict[str, Any]:
-    """Get the latest ticket from Zoho Desk, optionally filtered by account name or email.
+    """Get the latest ticket from Zoho Desk, optionally filtered by account name, email, or ticket number.
 
     Args:
         contact_name: Optional. Filter tickets by account name (company/client name).
         email: Optional. Filter tickets by contact email address.
+        ticket_number: Optional. Filter tickets by ticket number (e.g., "101").
         If neither is provided, returns the most recent ticket.
     
     Returns:
@@ -432,10 +442,10 @@ async def get_zoho_ticket(
         auth = ZohoAuth()
         client = ZohoDeskClient(auth)
         
-        ticket = await client.get_latest_ticket(contact_name=contact_name, email=email)
+        ticket = await client.get_latest_ticket(contact_name=contact_name, email=email, ticket_number=ticket_number)
         
         if not ticket:
-            search_term = email or contact_name or ""
+            search_term = ticket_number or email or contact_name or ""
             return {
                 "success": False,
                 "message": f"No ticket found{f' for: {search_term}' if search_term else ''}",
@@ -508,12 +518,136 @@ async def get_zoho_ticket(
         }
 
 
+@function_tool
+async def create_zoho_ticket_draft(
+    ctx: RunContextWrapper[AgentContext],
+    ticket_id: str,
+    content: str,
+    from_email_address: str | None = None,
+) -> dict[str, Any]:
+    """Create a draft reply for a Zoho Desk ticket.
+
+    Args:
+        ticket_id: The ID of the ticket to create a draft for.
+        content: The content of the draft reply.
+        from_email_address: Optional. The email address to send the reply from (must be a configured support email). 
+                            If not provided, defaults to 'driver@holson.fr' or ZOHO_DEFAULT_FROM_EMAIL env var.
+    """
+    try:
+        await ctx.context.stream(
+            ProgressUpdateEvent(text="Creating draft reply in Zoho Desk...")
+        )
+        
+        auth = ZohoAuth()
+        client = ZohoDeskClient(auth)
+        
+        # Determine from_email_address
+        if not from_email_address:
+            from_email_address = os.getenv("ZOHO_DEFAULT_FROM_EMAIL", "driver@holson.fr")
+        
+        result = await client.create_ticket_draft(
+            ticket_id, 
+            content, 
+            from_email_address=from_email_address
+        )
+        
+        return {
+            "success": True,
+            "message": "Draft reply created successfully.",
+            "data": result,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "Failed to create draft reply.",
+        }
+
+
+@function_tool
+async def open_add_note_form(
+    ctx: RunContextWrapper[AgentContext],
+    ticket_id: str,
+) -> str:
+    """Open a form to add a note to a ticket.
+    
+    Args:
+        ticket_id: The ID of the ticket.
+    """
+    form = Form(
+        key=f"add_note_form_inner_{ticket_id}",
+        title="Ajouter une note",
+        submitLabel="Ajouter",
+        onSubmitAction={
+            "type": "tool",
+            "payload": {
+                "tool": "add_zoho_ticket_note",
+                "args": {"ticket_id": ticket_id},
+            },
+        },
+        children=[
+            Input(
+                name="note_content",
+                label="Note",
+                placeholder="Entrez votre note ici...",
+                multiline=True,
+                required=True,
+            ),
+            Caption(value="Appuyez sur Entrée pour envoyer la note.", size="sm"),
+        ],
+    )
+    
+    # Wrap in Card because stream_widget expects a WidgetItem (Card or ListView)
+    card = Card(
+        key=f"add_note_card_{ticket_id}",
+        children=[form]
+    )
+    
+    await ctx.context.stream_widget(card)
+    return "Formulaire d'ajout de note ouvert."
+
+
+@function_tool
+async def add_zoho_ticket_note(
+    ctx: RunContextWrapper[AgentContext],
+    ticket_id: str,
+    note_content: str,
+) -> dict[str, Any]:
+    """Add a note (private comment) to a Zoho Desk ticket.
+
+    Args:
+        ticket_id: The ID of the ticket.
+        note_content: The content of the note.
+    """
+    try:
+        await ctx.context.stream(
+            ProgressUpdateEvent(text="Adding note to Zoho Desk...")
+        )
+        
+        auth = ZohoAuth()
+        client = ZohoDeskClient(auth)
+        
+        result = await client.add_ticket_comment(ticket_id, note_content, is_public=False)
+        
+        return {
+            "success": True,
+            "message": f"Note ajoutée avec succès : \"{note_content}\"",
+            "data": result,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "Failed to add note.",
+        }
+
+
 assistant_agent = Agent[AgentContext](
     model="gpt-5.1-chat-latest",
     #model="gpt-4.1-mini",
     name="Holson Zoho Desk Assistant",
     instructions=KNOWLEDGE_ASSISTANT_INSTRUCTIONS,
-    tools=[build_file_search_tool(), get_zoho_ticket], #mendatory_tool
+    tools=[build_file_search_tool(), get_zoho_ticket, create_zoho_ticket_draft, open_add_note_form, add_zoho_ticket_note], #mendatory_tool
 )
 
 title_agent = Agent[AgentContext](

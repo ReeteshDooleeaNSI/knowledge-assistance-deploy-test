@@ -28,7 +28,7 @@ CLIENT_SECRET = os.getenv("ZOHO_CLIENT_SECRET") or input("Entrez votre ZOHO_CLIE
 REDIRECT_URI = os.getenv("ZOHO_REDIRECT_URI")
 
 # Scopes nécessaires pour Zoho Desk
-SCOPES = "Desk.search.READ,Desk.tickets.READ,Desk.contacts.READ,Desk.tasks.READ"
+SCOPES = "Desk.search.READ,Desk.tickets.READ,Desk.contacts.READ,Desk.tasks.READ,Desk.Tickets.UPDATE,Desk.Tickets.ALL"
 
 # URL d'autorisation Zoho
 AUTH_URL = "https://accounts.zoho.eu/oauth/v2/auth"

@@ -227,6 +227,68 @@ class KnowledgeAssistantServer(ChatKitServer[dict[str, Any]]):
             async for event in _empty_async_iterator():
                 yield event
             return
+            
+        if action_type == "tool":
+            # Payload structure: {"tool": "tool_name", "args": {...}}
+            tool_name = payload.get("tool")
+            tool_args = payload.get("args") or {}
+            
+            # If tool_name is missing, try to see if it's in the top level (backward compatibility or direct call)
+            if not tool_name:
+                 tool_name = payload.get("tool") # Retry just in case
+            
+            print(f"[Action] Delegating tool {tool_name} to agent with args {tool_args}")
+            
+            if not tool_name:
+                print("[Action] Error: Tool name missing in payload")
+                async for event in _empty_async_iterator():
+                    yield event
+                return
+
+            # Construct a natural language prompt based on the tool
+            if tool_name == "open_add_note_form":
+                prompt = f"Ouvre le formulaire d'ajout de note pour le ticket {tool_args.get('ticket_id')}"
+            elif tool_name == "add_zoho_ticket_note":
+                # Use a specific format to ensure the agent understands
+                # We use JSON string for content to avoid issues with special characters
+                import json
+                # Note: For form submission, the input key is usually the key defined in the Input widget
+                # In our case, the Input key is "note_content".
+                # The payload from a Form submission merges the form values into the payload.
+                # So payload will be {"tool": "...", "args": {"ticket_id": ...}, "note_content": "..."}
+                # Wait, ChatKit Form submission payload structure:
+                # The payload defined in onSubmitAction is merged with form values?
+                # Usually: payload = onSubmitAction.payload | form_values
+                # So if onSubmitAction.payload is {"tool": "...", "args": {...}},
+                # then the actual payload received here will be {"tool": "...", "args": {...}, "note_content": "..."}
+                
+                # Let's handle both cases (nested args or top-level form values)
+                note_content = payload.get("note_content")
+                ticket_id = tool_args.get("ticket_id")
+                
+                content_json = json.dumps(note_content or '')
+                prompt = f"Ajoute une note au ticket {ticket_id} avec le contenu: {content_json}"
+            else:
+                # Fallback for other tools
+                prompt = f"Exécute l'outil {tool_name} avec les arguments {tool_args}"
+            
+            agent_context = AgentContext(
+                thread=thread,
+                store=self.store,
+                request_context=context,
+            )
+            
+            result = Runner.run_streamed(
+                self.assistant,
+                prompt,
+                context=agent_context,
+                run_config=RunConfig(model_settings=ModelSettings()),
+            )
+            
+            async for event in stream_agent_response(agent_context, result):
+                yield event
+            
+            return
         
         # Unknown action type - return empty iterator
         async for event in _empty_async_iterator():
